@@ -1,54 +1,38 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Deriv AI All-Market Analyzer</title>
+<title>Deriv All-Market Analyzer</title>
 <style>
-*{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#0b1020;color:#eef2ff;margin:0;padding:12px}
-.app{max-width:850px;margin:auto}
-.card{background:#151c32;border-radius:15px;padding:15px;margin:12px 0}
-h1{font-size:24px;margin:0 0 8px}
-h2{font-size:18px}
-.muted{color:#aab4d0;font-size:13px}
-select,button{width:100%;padding:12px;border-radius:9px;border:0;margin:5px 0;font-size:14px}
+body{font-family:Arial;background:#0b1020;color:#eef2ff;margin:0;padding:14px}
+.app{max-width:760px;margin:auto}
+.card{background:#151c32;padding:15px;border-radius:14px;margin:12px 0}
+select,button{width:100%;padding:12px;margin:5px 0;border:0;border-radius:9px}
 select{background:#222b47;color:white}
 button{background:#5eead4;color:#07111f;font-weight:bold}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.metric{background:#202945;padding:12px;border-radius:11px;min-width:0}
-.metric b{display:block;font-size:21px;margin-top:7px;overflow-wrap:anywhere}
-.signal{font-size:27px;font-weight:800;margin:10px 0}
-table{width:100%;border-collapse:collapse;font-size:13px}
-td,th{text-align:left;padding:8px 4px;border-bottom:1px solid #303a58}
-.status{overflow-wrap:anywhere}
-.good{color:#5eead4}
-.warn{color:#fbbf24}
-.bad{color:#fb7185}
-.scroll{overflow-x:auto}
-@media(min-width:600px){.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:#202945;padding:12px;border-radius:10px;overflow-wrap:anywhere}
+.metric b{display:block;font-size:20px;margin-top:6px}
+.muted{color:#aab4d0;font-size:13px}
+.signal{font-size:26px;font-weight:bold}
+table{width:100%;text-align:left;border-collapse:collapse}
+td,th{padding:8px 3px;border-bottom:1px solid #303a58}
 </style>
 </head>
 <body>
 <div class="app">
-
 <div class="card">
-<h1>🤖 Deriv AI Analyzer</h1>
-<div class="muted">Live ticks • All available markets • Digit statistics</div>
-<p id="status" class="status warn">Connecting...</p>
-<button onclick="connect()">CONNECT / RECONNECT</button>
+<h2>🤖 Deriv All-Market Analyzer</h2>
+<p id="status" class="muted">Connecting...</p>
+<button onclick="connect()">CONNECT LIVE TICKS</button>
 </div>
 
 <div class="card">
-<h2>1. Select Market & Contract</h2>
-<div class="controls">
-<div>
-<label for="market">Market</label>
-<select id="market"><option value="">Loading markets...</option></select>
-</div>
-<div>
-<label for="contract">Contract type</label>
+<label>Market</label>
+<select id="market"></select>
+<label>Digit contract</label>
 <select id="contract">
 <option value="MATCH">Matches</option>
 <option value="DIFFER">Differs</option>
@@ -59,424 +43,171 @@ td,th{text-align:left;padding:8px 4px;border-bottom:1px solid #303a58}
 <option value="RISE">Rise</option>
 <option value="FALL">Fall</option>
 </select>
-</div>
-<div>
-<label for="target">Target digit / barrier</label>
+<label>Target digit</label>
 <select id="target"></select>
-</div>
-<div>
-<label for="window">Analysis window</label>
+<label>Ticks to analyse</label>
 <select id="window">
-<option value="100">100 ticks</option>
-<option value="500">500 ticks</option>
-<option value="1000" selected>1,000 ticks</option>
+<option value="100">100</option>
+<option value="500">500</option>
+<option value="1000" selected>1000</option>
 </select>
-</div>
-</div>
-<button onclick="loadMarket()">ANALYSE SELECTED MARKET</button>
+<button onclick="loadMarket()">ANALYSE MARKET</button>
 </div>
 
 <div class="card">
-<div class="muted">LATEST TICK → ANALYSE → STATISTICAL ASSESSMENT</div>
+<div class="muted">LATEST TICK → ANALYSIS</div>
 <div id="signal" class="signal">WAIT</div>
-<div id="reason" class="muted">Waiting for market data...</div>
+<p id="reason" class="muted">Waiting for ticks...</p>
 </div>
 
 <div class="grid">
-<div class="metric">Selected market<b id="symbol">—</b></div>
+<div class="metric">Market<b id="symbol">—</b></div>
 <div class="metric">Latest price<b id="price">—</b></div>
 <div class="metric">Latest digit<b id="last">—</b></div>
 <div class="metric">Ticks collected<b id="count">0</b></div>
 <div class="metric">Contract frequency<b id="prob">—</b></div>
-<div class="metric">Sample baseline<b id="base">—</b></div>
 <div class="metric">Most frequent digit<b id="best">—</b></div>
-<div class="metric">Recent streak<b id="streak">—</b></div>
 </div>
 
 <div class="card">
-<h2>Digit Distribution</h2>
-<div class="muted">Statistics for the selected market and analysis window.</div>
-<div class="scroll">
+<h3>Digit distribution</h3>
 <table>
-<thead><tr><th>Digit</th><th>Count</th><th>Frequency</th></tr></thead>
+<thead><tr><th>Digit</th><th>Count</th><th>Percent</th></tr></thead>
 <tbody id="rows"></tbody>
 </table>
 </div>
-</div>
 
-<div class="card">
-<h2>How the analyzer works</h2>
-<p class="muted">
-MATCH: frequency of the chosen digit.<br>
-DIFFER: frequency of all other digits.<br>
-OVER / UNDER: frequency above or below the selected digit.<br>
-EVEN / ODD: frequency of even or odd digits.<br>
-RISE / FALL: recent upward or downward tick movements.
-</p>
-<p class="muted">
-This is a statistical analysis tool, not a trained AI prediction model.
-A high historical frequency does not prove that a contract has a future
-advantage. Compare actual payout and losses before making any decision.
-No trades are placed by this application.
-</p>
+<div class="card muted">
+Public market-data connection only. This analyzer does not log into your account or place trades. Historical statistics cannot guarantee future results.
 </div>
 </div>
 
 <script>
-"use strict";
+const URL="wss://api.derivws.com/trading/v1/options/ws/public";
+let ws=null,ticks=[],pipSize=2,symbol="",subId=null;
+const $=id=>document.getElementById(id);
 
-const WS_URL =
-  "wss://api.derivws.com/trading/v1/options/ws/public";
+function connect(){
+ if(ws){ws.onclose=null;ws.close()}
+ ticks=[];subId=null;
+ $("status").textContent="Connecting to market data...";
+ ws=new WebSocket(URL);
 
-let ws = null;
-let markets = [];
-let ticks = [];
-let pipSize = 2;
-let currentSymbol = "";
-let subscriptionId = null;
-let requestNumber = 10;
-let reconnectTimer = null;
+ ws.onopen=()=>{
+  $("status").textContent="Connected. Loading markets...";
+  ws.send(JSON.stringify({active_symbols:"brief",req_id:1}));
+ };
 
-const $ = id => document.getElementById(id);
+ ws.onmessage=e=>{
+  let x;
+  try{x=JSON.parse(e.data)}catch(err){return}
+  if(x.error){$("status").textContent="API error: "+x.error.message;return}
 
-function send(data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
+  if(x.active_symbols){
+   let ms=x.active_symbols.filter(m=>m.symbol&&m.display_name);
+   $("market").innerHTML="";
+   ms.sort((a,b)=>a.display_name.localeCompare(b.display_name))
+   .forEach(m=>{
+    let o=document.createElement("option");
+    o.value=m.symbol;
+    o.textContent=m.display_name+" ("+m.symbol+")";
+    $("market").appendChild(o);
+   });
+   if(ms.some(m=>m.symbol==="R_100"))$("market").value="R_100";
+   loadMarket();
   }
+
+  if(x.history){
+   ticks=[];
+   if(Number.isInteger(x.pip_size))pipSize=x.pip_size;
+   (x.history.prices||[]).forEach(q=>ticks.push({q:Number(q)}));
+   trim();render();
+  }
+
+  if(x.tick&&x.tick.symbol===symbol){
+   if(Number.isInteger(x.tick.pip_size))pipSize=x.tick.pip_size;
+   ticks.push({q:Number(x.tick.quote)});
+   if(x.subscription)subId=x.subscription.id;
+   trim();render();
+   $("status").textContent="LIVE TICKS • "+symbol;
+  }
+ };
+
+ ws.onerror=()=>{$("status").textContent="Connection error. Check internet."};
+ ws.onclose=()=>{$("status").textContent="Disconnected. Reconnect to try again."};
 }
 
-function setStatus(text, cls = "warn") {
-  $("status").textContent = text;
-  $("status").className = "status " + cls;
+function loadMarket(){
+ if(!ws||ws.readyState!==1){
+  $("status").textContent="Connect first";return;
+ }
+ if(subId){ws.send(JSON.stringify({forget:subId}));subId=null}
+ symbol=$("market").value;
+ ticks=[];
+ $("symbol").textContent=symbol;
+ $("price").textContent="Loading...";
+ $("last").textContent="—";
+ $("count").textContent="0";
+ ws.send(JSON.stringify({
+  ticks_history:symbol,end:"latest",count:1000,style:"ticks",req_id:2
+ }));
+ ws.send(JSON.stringify({ticks:symbol,subscribe:1,req_id:3}));
 }
 
-function connect() {
-  clearTimeout(reconnectTimer);
+function trim(){if(ticks.length>1000)ticks=ticks.slice(-1000)}
 
-  if (ws) {
-    try { ws.close(); } catch (e) {}
-  }
-
-  setStatus("Connecting to Deriv market data...");
-  $("market").innerHTML =
-    '<option value="">Loading markets...</option>';
-
-  try {
-    ws = new WebSocket(WS_URL);
-  } catch (e) {
-    setStatus("Unable to create connection: " + e.message, "bad");
-    return;
-  }
-
-  ws.onopen = () => {
-    setStatus("Connected. Loading available markets...", "good");
-
-    send({
-      active_symbols: "brief",
-      req_id: 1
-    });
-  };
-
-  ws.onmessage = event => {
-    let x;
-
-    try {
-      x = JSON.parse(event.data);
-    } catch (e) {
-      return;
-    }
-
-    if (x.error) {
-      setStatus("API error: " + x.error.message, "bad");
-      return;
-    }
-
-    if (x.active_symbols) {
-      markets = x.active_symbols
-        .filter(m => m.symbol && m.display_name)
-        .sort((a, b) =>
-          a.display_name.localeCompare(b.display_name)
-        );
-
-      const previous = currentSymbol;
-      $("market").innerHTML = "";
-
-      markets.forEach(m => {
-        const opt = document.createElement("option");
-        opt.value = m.symbol;
-        opt.textContent = m.display_name + " (" + m.symbol + ")";
-        $("market").appendChild(opt);
-      });
-
-      if (!markets.length) {
-        setStatus("No markets returned by the API.", "bad");
-        return;
-      }
-
-      const exists = markets.some(m => m.symbol === previous);
-      $("market").value = exists ? previous : markets[0].symbol;
-      loadMarket();
-      return;
-    }
-
-    if (x.history) {
-      if (x.echo_req &&
-          x.echo_req.ticks_history !== currentSymbol) return;
-
-      ticks = [];
-      pipSize = Number.isInteger(x.pip_size)
-        ? x.pip_size : pipSize;
-
-      const prices = x.history.prices || [];
-      const times = x.history.times || [];
-
-      prices.forEach((q, i) => {
-        ticks.push({
-          q: Number(q),
-          t: times[i] || 0
-        });
-      });
-
-      trimTicks();
-      render();
-      setStatus(
-        "History loaded. Waiting for live ticks on " +
-        currentSymbol, "good"
-      );
-      return;
-    }
-
-    if (x.tick && x.tick.symbol === currentSymbol) {
-      const t = x.tick;
-
-      if (Number.isInteger(t.pip_size)) {
-        pipSize = t.pip_size;
-      }
-
-      ticks.push({
-        q: Number(t.quote),
-        t: Number(t.epoch || 0)
-      });
-
-      if (x.subscription && x.subscription.id) {
-        subscriptionId = x.subscription.id;
-      }
-
-      trimTicks();
-      render();
-      setStatus("LIVE • " + currentSymbol, "good");
-    }
-  };
-
-  ws.onerror = () => {
-    setStatus(
-      "Connection error. Check internet and API availability.",
-      "bad"
-    );
-  };
-
-  ws.onclose = () => {
-    setStatus("Disconnected. Tap reconnect to try again.", "bad");
-  };
+function digit(q){
+ let s=Number(q).toFixed(Math.min(10,Math.max(0,pipSize)));
+ return Number(s.replace(/\D/g,"").slice(-1));
 }
 
-function trimTicks() {
-  if (ticks.length > 1000) {
-    ticks = ticks.slice(-1000);
+function render(){
+ let a=ticks.slice(-Number($("window").value));
+ if(!a.length)return;
+ let ds=a.map(x=>digit(x.q)),c=Array(10).fill(0);
+ ds.forEach(d=>c[d]++);
+ let n=a.length,last=ds[n-1],best=0;
+ for(let d=1;d<10;d++)if(c[d]>c[best])best=d;
+
+ let type=$("contract").value,t=Number($("target").value);
+ let hits=0,base=0,label="";
+ if(type==="MATCH"){hits=c[t];base=10;label="Matches "+t}
+ if(type==="DIFFER"){hits=n-c[t];base=90;label="Differs from "+t}
+ if(type==="OVER"){hits=ds.filter(d=>d>t).length;base=(9-t)*10;label="Over "+t}
+ if(type==="UNDER"){hits=ds.filter(d=>d<t).length;base=t*10;label="Under "+t}
+ if(type==="EVEN"){hits=ds.filter(d=>d%2===0).length;base=50;label="Even"}
+ if(type==="ODD"){hits=ds.filter(d=>d%2!==0).length;base=50;label="Odd"}
+ if(type==="RISE"||type==="FALL"){
+  hits=0;
+  for(let i=1;i<n;i++){
+   if(type==="RISE"&&a[i].q>a[i-1].q)hits++;
+   if(type==="FALL"&&a[i].q<a[i-1].q)hits++;
   }
+  base=50;label=type;
+  hits=hits/Math.max(1,n-1)*n;
+ }
+ let pct=hits/n*100;
+ $("symbol").textContent=symbol;
+ $("price").textContent=a[n-1].q.toFixed(pipSize);
+ $("last").textContent=last;
+ $("count").textContent=n;
+ $("prob").textContent=pct.toFixed(1)+"%";
+ $("best").textContent=best+" ("+(c[best]/n*100).toFixed(1)+"%)";
+ $("signal").textContent=n<100?"COLLECTING":"WAIT";
+ $("reason").textContent=label+": observed "+pct.toFixed(1)+
+ "% in this sample; baseline "+base.toFixed(1)+
+ "%. This is historical frequency, not a reliable next-tick prediction.";
+ $("rows").innerHTML=c.map((v,d)=>"<tr><td>"+d+"</td><td>"+v+
+ "</td><td>"+(v/n*100).toFixed(1)+"%</td></tr>").join("");
 }
 
-function loadMarket() {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    setStatus("Connect to Deriv first.", "bad");
-    return;
-  }
-
-  const symbol = $("market").value;
-  if (!symbol) return;
-
-  if (subscriptionId) {
-    send({ forget: subscriptionId });
-    subscriptionId = null;
-  }
-
-  currentSymbol = symbol;
-  ticks = [];
-  $("symbol").textContent = symbol;
-  $("price").textContent = "Loading...";
-  $("last").textContent = "—";
-  $("count").textContent = "0";
-  $("signal").textContent = "COLLECTING";
-  $("reason").textContent = "Loading history for " + symbol + "...";
-
-  setStatus("Requesting history for " + symbol);
-
-  send({
-    ticks_history: symbol,
-    end: "latest",
-    count: 1000,
-    style: "ticks",
-    req_id: ++requestNumber
-  });
-
-  send({
-    ticks: symbol,
-    subscribe: 1,
-    req_id: ++requestNumber
-  });
+for(let d=0;d<=9;d++){
+ let o=document.createElement("option");
+ o.value=d;o.textContent=d;$("target").appendChild(o);
 }
-
-function getDigit(quote) {
-  if (!Number.isFinite(quote)) return 0;
-
-  const decimals = Math.max(0, Math.min(10, pipSize));
-  const formatted = quote.toFixed(decimals);
-  const digits = formatted.replace(/\D/g, "");
-
-  return Number(digits.slice(-1));
-}
-
-function getDigits(list) {
-  return list.map(t => getDigit(t.q));
-}
-
-function render() {
-  const windowSize = Number($("window").value);
-  const list = ticks.slice(-windowSize);
-  const total = list.length;
-
-  if (!total) return;
-
-  const digits = getDigits(list);
-  const counts = Array(10).fill(0);
-  digits.forEach(d => counts[d]++);
-
-  const latest = list[total - 1];
-  const lastDigit = digits[total - 1];
-
-  let best = 0;
-  for (let d = 1; d < 10; d++) {
-    if (counts[d] > counts[best]) best = d;
-  }
-
-  const contract = $("contract").value;
-  const target = Number($("target").value);
-
-  let successes = 0;
-  let baseline = 0;
-  let description = "";
-
-  if (contract === "MATCH") {
-    successes = counts[target];
-    baseline = 10;
-    description = "Matches digit " + target;
-  } else if (contract === "DIFFER") {
-    successes = total - counts[target];
-    baseline = 90;
-    description = "Differs from digit " + target;
-  } else if (contract === "OVER") {
-    successes = digits.filter(d => d > target).length;
-    baseline = (9 - target) * 10;
-    description = "Digit greater than " + target;
-  } else if (contract === "UNDER") {
-    successes = digits.filter(d => d < target).length;
-    baseline = target * 10;
-    description = "Digit less than " + target;
-  } else if (contract === "EVEN") {
-    successes = digits.filter(d => d % 2 === 0).length;
-    baseline = 50;
-    description = "Even digits";
-  } else if (contract === "ODD") {
-    successes = digits.filter(d => d % 2 !== 0).length;
-    baseline = 50;
-    description = "Odd digits";
-  } else if (contract === "RISE" || contract === "FALL") {
-    let wins = 0;
-    for (let i = 1; i < list.length; i++) {
-      if (contract === "RISE" && list[i].q > list[i-1].q) wins++;
-      if (contract === "FALL" && list[i].q < list[i-1].q) wins++;
-    }
-    successes = wins;
-    baseline = 50;
-    description = contract + " tick-to-tick movement";
-  }
-
-  const frequency = successes / total * 100;
-
-  // Count consecutive repetitions of the latest digit.
-  let streak = 0;
-  for (let i = digits.length - 1; i >= 0; i--) {
-    if (digits[i] === lastDigit) streak++;
-    else break;
-  }
-
-  $("symbol").textContent = currentSymbol;
-  $("price").textContent = latest.q.toFixed(pipSize);
-  $("last").textContent = lastDigit;
-  $("count").textContent = total + " / " + windowSize;
-  $("best").textContent = best + " (" +
-    (counts[best] / total * 100).toFixed(1) + "%)";
-  $("streak").textContent = lastDigit + " × " + streak;
-  $("prob").textContent = frequency.toFixed(1) + "%";
-  $("base").textContent = baseline.toFixed(1) + "%";
-
-  $("rows").innerHTML = counts.map((v, d) =>
-    "<tr><td>" + d + "</td><td>" + v +
-    "</td><td>" + (v / total * 100).toFixed(1) +
-    "%</td></tr>"
-  ).join("");
-
-  let signal = "WAIT";
-  let reason = description + ". Not enough data to assess.";
-  let cls = "warn";
-
-  if (contract === "RISE" || contract === "FALL") {
-    if (total >= 100) {
-      signal = "WATCH";
-      reason = description + ": " + frequency.toFixed(1) +
-        "% of sampled moves. This is not a next-tick forecast.";
-    }
-  } else if (total >= 100) {
-    const baselineRate = baseline / 100;
-    const observed = frequency / 100;
-
-    // Approximate uncertainty guard; not a profitability test.
-    const se = Math.sqrt(
-      baselineRate * (1 - baselineRate) / total
-    );
-
-    if (Math.abs(observed - baselineRate) > 2 * se) {
-      signal = "CHECK STATISTICS";
-      cls = "good";
-      reason = description + " occurred " +
-        frequency.toFixed(1) +
-        "% of this sample, noticeably different from the simple " +
-        baseline.toFixed(1) + "% reference. This does not establish a profitable edge.";
-    } else {
-      signal = "WAIT";
-      reason = description + " occurred " +
-        frequency.toFixed(1) +
-        "%. The sample does not show a clear statistical deviation.";
-    }
-  }
-
-  $("signal").textContent = signal;
-  $("signal").className = "signal " + cls;
-  $("reason").textContent = reason;
-}
-
-for (let d = 0; d <= 9; d++) {
-  const opt = document.createElement("option");
-  opt.value = d;
-  opt.textContent = d;
-  $("target").appendChild(opt);
-}
-
-$("market").addEventListener("change", loadMarket);
-$("contract").addEventListener("change", render);
-$("target").addEventListener("change", render);
-$("window").addEventListener("change", render);
-
+$("contract").onchange=render;
+$("target").onchange=render;
+$("window").onchange=render;
 connect();
 </script>
 </body>
