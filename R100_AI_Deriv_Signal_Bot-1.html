@@ -101,14 +101,141 @@ function connect(){
  ws.onmessage=e=>{
   let x;
   try{x=JSON.parse(e.data)}catch(err){return}
-  if(x.error){$("status").textContent="API error: "+x.error.message;return}
+function connect() {
+  if (ws) {
+    try { ws.onclose = null; ws.close(); } catch (e) {}
+  }
 
-  if(x.active_symbols){
-   let ms=x.active_symbols.filter(m=>m.symbol&&m.display_name);
-   $("market").innerHTML="";
-   ms.sort((a,b)=>a.display_name.localeCompare(b.display_name))
-   .forEach(m=>{
-    let o=document.createElement("option");
+  ticks = [];
+  pipSize = null;
+  lastLiveEpoch = null;
+  candidateSignal = '';
+  candidateCount = 0;
+  stableSignal = '';
+
+  $('stored').textContent = '0';
+  $('quote').textContent = '—';
+  $('pred').textContent = 'WAIT';
+  $('status').textContent = 'Connecting to Deriv...';
+
+  marketListLoaded = false;
+  ws = new WebSocket(WS);
+
+  ws.onopen = () => {
+    $('status').textContent = 'Connected. Loading markets...';
+    send({
+      active_symbols: 'full',
+      product_type: 'basic',
+      req_id: 3
+    });
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const x = JSON.parse(e.data);
+
+      if (x.error) {
+        $('status').textContent =
+          'API error: ' + x.error.message;
+        return;
+      }
+
+      // Load markets before requesting tick history.
+      if (Array.isArray(x.active_symbols)) {
+        populateMarkets(x.active_symbols);
+
+        const symbol = $('market').value;
+
+        if (!symbol) {
+          $('status').textContent =
+            'No market available. Check the API response.';
+          return;
+        }
+
+        $('status').textContent =
+          'Loading history for ' + symbol + '...';
+
+        send({
+          ticks_history: symbol,
+          end: 'latest',
+          count: 1000,
+          style: 'ticks',
+          req_id: 1
+        });
+
+        send({
+          ticks: symbol,
+          subscribe: 1,
+          req_id: 2
+        });
+
+        return;
+      }
+
+      if (x.history) {
+        pipSize = x.pip_size ?? pipSize;
+
+        ticks = (x.history.prices || []).map(q => ({
+          q: Number(q),
+          p: pipSize
+        }));
+
+        update();
+        analyse();
+
+        $('status').textContent =
+          'History loaded. Waiting for live ticks...';
+      }
+
+      if (x.tick) {
+        if (x.tick.pip_size != null) {
+          pipSize = x.tick.pip_size;
+        }
+
+        const ep = Number(x.tick.epoch);
+
+        if (ep && lastLiveEpoch && ep <= lastLiveEpoch) {
+          return;
+        }
+
+        if (ep) lastLiveEpoch = ep;
+
+        ticks.push({
+          q: Number(x.tick.quote),
+          p: x.tick.pip_size ?? pipSize
+        });
+
+        if (ticks.length > 2500) {
+          ticks = ticks.slice(-2500);
+        }
+
+        update();
+        analyse();
+
+        $('status').textContent =
+          'Live ticks connected successfully.';
+      }
+
+    } catch (err) {
+      $('status').textContent =
+        'Response processing error: ' + err.message;
+    }
+  };
+
+  ws.onerror = () => {
+    $('status').textContent =
+      'Connection error. Check your internet and Deriv API.';
+  };
+
+  ws.onclose = () => {
+    if (ws) {
+      $('status').textContent =
+        'Disconnected. Tap Connect Live Ticks to retry.';
+    }
+  };
+ }
+  
+   
     o.value=m.symbol;
     o.textContent=m.display_name+" ("+m.symbol+")";
     $("market").appendChild(o);
